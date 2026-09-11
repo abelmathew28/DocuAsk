@@ -1,0 +1,274 @@
+<div class="flex h-full min-h-0 flex-col overflow-hidden">
+  <div class="grid h-full min-h-0 lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,1fr)_18rem]">
+    <aside class="hidden min-h-0 overflow-y-auto border-r border-paper-200 px-4 py-5 lg:block dark:border-white/10">
+      <div class="flex gap-4 border-b border-paper-200 pb-2 text-[13px] dark:border-white/10">
+        <button type="button" class="scope-tab" [class.is-on]="scope === 'document'" (click)="setScope('document')">This file</button>
+        <button type="button" class="scope-tab" [class.is-on]="scope === 'selected'" (click)="setScope('selected')">Selected</button>
+        <button type="button" class="scope-tab" [class.is-on]="scope === 'library'" (click)="setScope('library')">Library</button>
+      </div>
+      <div class="mt-6 flex items-center justify-between gap-2">
+        <h2 class="text-[11px] uppercase tracking-[0.14em] text-ink-600">Documents</h2>
+      </div>
+      <div class="mt-2 border-b border-paper-200 pb-3 dark:border-white/10">
+        <app-dropzone (fileSelected)="upload($event)"></app-dropzone>
+        <p *ngIf="uploading" class="mt-2 text-xs text-ink-600">Uploading…</p>
+      </div>
+      <p *ngIf="!documents.length" class="mt-2 text-sm text-ink-600">No files yet.</p>
+      <ul class="mt-2 text-sm">
+        <li *ngFor="let doc of documents">
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 py-1.5 text-left"
+            [class.font-medium]="scope !== 'library' && (doc.id === selectedDocumentId || checkedIds.includes(doc.id))"
+            [class.text-ink-600]="scope === 'library' || (doc.id !== selectedDocumentId && !checkedIds.includes(doc.id))"
+            (click)="selectDocument(doc.id)"
+          >
+            <input
+              *ngIf="scope === 'selected'"
+              type="checkbox"
+              class="shrink-0"
+              [checked]="checkedIds.includes(doc.id)"
+              (click)="$event.stopPropagation(); toggleChecked(doc.id)"
+            />
+            <span class="min-w-0 flex-1 truncate">{{ doc.name }}</span>
+            <span *ngIf="doc.status !== 'ready'" class="text-[11px] capitalize text-ink-600">{{ doc.status }}</span>
+          </button>
+        </li>
+      </ul>
+      <div class="mt-8 flex flex-wrap gap-3 border-b border-paper-200 pb-2 text-[13px] dark:border-white/10">
+        <button type="button" class="scope-tab" [class.is-on]="mode === 'ask'" (click)="setMode('ask')">Ask</button>
+        <button type="button" class="scope-tab" [class.is-on]="mode === 'research'" (click)="setMode('research')">Research</button>
+        <button type="button" class="scope-tab" [class.is-on]="mode === 'compare'" (click)="setMode('compare')">Compare</button>
+        <button type="button" class="scope-tab" [class.is-on]="mode === 'extract'" (click)="setMode('extract')">Extract</button>
+      </div>
+      <div class="mt-6 flex items-center justify-between">
+        <h2 class="text-[11px] uppercase tracking-[0.14em] text-ink-600">Threads</h2>
+        <button type="button" class="text-ink-600 hover:text-ink-950 dark:hover:text-white" (click)="newConversation()" aria-label="New conversation">
+          <svg lucidePlus [size]="15"></svg>
+        </button>
+      </div>
+      <ul class="mt-2 text-sm">
+        <li *ngIf="!conversations.length" class="py-1.5 text-ink-600">No threads in this view.</li>
+        <li *ngFor="let chat of conversations">
+          <a
+            [routerLink]="['/app/ask', chat.id]"
+            class="block py-1.5"
+            [class.font-medium]="chat.id === conversationId"
+            [class.text-ink-600]="chat.id !== conversationId"
+          >
+            <span class="block truncate">{{ chat.title }}</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <section class="flex min-h-0 flex-col overflow-hidden">
+      <header class="shrink-0 border-b border-paper-200 px-4 py-3 sm:px-6 dark:border-white/10">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h1 class="truncate font-medium">{{ scopeLabel() }}</h1>
+            <p class="mt-0.5 text-xs text-ink-600">{{ title }} · {{ mode }}</p>
+          </div>
+          <div class="flex flex-wrap justify-end gap-1 text-sm">
+            <button *ngIf="scope === 'document'" type="button" class="btn-quiet" (click)="downloadDoc()">Original file</button>
+            <button *ngIf="messages.length" type="button" class="btn-quiet" (click)="copyThread()">Copy thread</button>
+            <button *ngIf="conversationId" type="button" class="btn-quiet" (click)="exportThread()">Export</button>
+            <button type="button" class="btn-quiet" (click)="renameOpen = true; renameValue = title">Rename</button>
+            <button *ngIf="conversationId" type="button" class="btn-quiet text-red-700" (click)="pendingDeleteId = conversationId">Delete</button>
+          </div>
+        </div>
+        <div class="mt-3 grid gap-2 lg:hidden">
+          <select class="field" [ngModel]="scope" (ngModelChange)="setScope($event)">
+            <option value="document">This file</option>
+            <option value="selected">Selected files</option>
+            <option value="library">Entire library</option>
+          </select>
+          <select *ngIf="scope !== 'library'" class="field" [ngModel]="selectedDocumentId" (ngModelChange)="selectDocument($event)">
+            <option value="">Choose a document</option>
+            <option *ngFor="let doc of documents" [value]="doc.id">{{ doc.name }}</option>
+          </select>
+          <select class="field" [ngModel]="conversationId" (ngModelChange)="openConversation($event)">
+            <option value="">Threads</option>
+            <option *ngFor="let chat of conversations" [value]="chat.id">{{ chat.title }}</option>
+          </select>
+          <select class="field" [ngModel]="mode" (ngModelChange)="setMode($event)">
+            <option value="ask">Ask</option>
+            <option value="research">Research</option>
+            <option value="compare">Compare</option>
+            <option value="extract">Extract</option>
+          </select>
+        </div>
+        <div *ngIf="mode === 'compare'" class="mt-3 grid gap-2 sm:grid-cols-2">
+          <select class="field" [(ngModel)]="compareA">
+            <option value="">Document A</option>
+            <option *ngFor="let doc of readyDocuments()" [value]="doc.id">{{ doc.name }}</option>
+          </select>
+          <select class="field" [(ngModel)]="compareB">
+            <option value="">Document B</option>
+            <option *ngFor="let doc of readyDocuments()" [value]="doc.id">{{ doc.name }}</option>
+          </select>
+        </div>
+      </header>
+
+      <div #thread class="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-6">
+        <div *ngIf="loading" class="mx-auto max-w-xl space-y-3">
+          <div class="h-4 bg-paper-200 dark:bg-white/10"></div>
+          <div class="h-16 bg-paper-200 dark:bg-white/10"></div>
+        </div>
+        <app-empty-state
+          *ngIf="!loading && !documents.length"
+          title="Upload a document first"
+          message="Ask needs at least one indexed file. Drop a PDF, Word, or text file here, wait until it is Ready, then ask."
+        >
+          <div class="max-w-md border-y border-paper-200 py-4 dark:border-white/10">
+            <app-dropzone (fileSelected)="upload($event)"></app-dropzone>
+            <p *ngIf="uploading" class="mt-2 text-sm text-ink-600">Uploading…</p>
+          </div>
+        </app-empty-state>
+        <div *ngIf="!loading && documents.length && !messages.length && !sending">
+          <p class="font-display text-3xl tracking-tight">{{ emptyTitle() }}</p>
+          <p *ngIf="documentBrief()" class="mt-3 max-w-xl text-sm leading-6 text-ink-600">{{ documentBrief() }}</p>
+          <p *ngIf="scope === 'document' && selectedDocument()?.status && selectedDocument()?.status !== 'ready'" class="mt-3 text-sm text-ink-600">
+            This file is still {{ selectedDocument()?.status }}. You can ask when it is Ready.
+          </p>
+          <div *ngIf="starterQuestions().length" class="mt-6 flex flex-col items-start gap-2">
+            <button
+              *ngFor="let question of starterQuestions()"
+              type="button"
+              class="text-left text-sm underline decoration-paper-200 underline-offset-4 hover:decoration-ink-950 dark:decoration-white/20"
+              (click)="useSuggestion(question)"
+            >
+              {{ question }}
+            </button>
+          </div>
+        </div>
+        <article *ngFor="let message of messages" [class]="message.role === 'user' ? 'ml-auto max-w-2xl' : 'max-w-3xl cursor-pointer'" (click)="selectEvidence(message)">
+          <p *ngIf="message.role === 'user'" class="text-right text-sm leading-6">{{ message.content }}</p>
+          <div *ngIf="message.role === 'assistant'">
+            <div class="mb-2 flex items-center gap-2">
+              <app-support-badge [status]="message.support_status || (isInsufficient(message) ? 'not_found' : message.sources.length ? 'supported' : 'partially_supported')"></app-support-badge>
+            </div>
+            <app-markdown [content]="message.content"></app-markdown>
+            <div *ngIf="message.sources.length" class="mt-4 flex flex-wrap gap-2 xl:hidden">
+              <button
+                *ngFor="let source of message.sources"
+                type="button"
+                class="rounded-md border border-paper-200 px-2 py-1 text-xs dark:border-white/10"
+                (click)="openSource(source); $event.stopPropagation()"
+              >
+                {{ source.document }} · p.{{ source.page }}
+              </button>
+            </div>
+            <p *ngIf="isInsufficient(message)" class="mt-4 text-sm text-ink-600">
+              No citation — this was not found in the selected files.
+            </p>
+            <div class="mt-3 flex flex-wrap gap-1">
+              <button type="button" class="rounded-md p-1.5 text-ink-600 hover:text-ink-950 dark:hover:text-white" (click)="copy(message.content); $event.stopPropagation()" aria-label="Copy answer"><svg lucideCopy [size]="14"></svg></button>
+              <button type="button" class="rounded-md px-2 py-1.5 text-xs text-ink-600 hover:text-ink-950 dark:hover:text-white" (click)="copyAnswer(message); $event.stopPropagation()">Copy with sources</button>
+              <button type="button" class="rounded-md p-1.5 text-ink-600 hover:text-ink-950 dark:hover:text-white" (click)="regenerate(); $event.stopPropagation()" aria-label="Regenerate"><svg lucideRefreshCw [size]="14"></svg></button>
+              <button type="button" class="rounded-md p-1.5 text-ink-600 hover:text-ink-950 dark:hover:text-white" [class.text-accent-600]="message.feedback === 'up'" (click)="rate(message, 'up'); $event.stopPropagation()" aria-label="Helpful"><svg lucideThumbsUp [size]="14"></svg></button>
+              <button type="button" class="rounded-md p-1.5 text-ink-600 hover:text-ink-950 dark:hover:text-white" [class.text-accent-600]="message.feedback === 'down'" (click)="rate(message, 'down'); $event.stopPropagation()" aria-label="Not helpful"><svg lucideThumbsDown [size]="14"></svg></button>
+            </div>
+          </div>
+        </article>
+        <div *ngIf="sending" class="text-sm text-ink-600">
+          <span class="processing-dot">{{ askStage }}</span>
+        </div>
+        <div *ngIf="!sending && followUps.length && messages.length" class="rounded-md border border-paper-200 bg-white/70 px-3 py-3 dark:border-white/10 dark:bg-ink-900/40">
+          <p class="text-[11px] uppercase tracking-[0.14em] text-ink-600">Follow up</p>
+          <div class="mt-2 flex flex-col items-start gap-1.5">
+            <button
+              *ngFor="let tip of followUps"
+              type="button"
+              class="text-left text-sm underline decoration-paper-200 underline-offset-4 hover:decoration-ink-950 dark:decoration-white/20"
+              (click)="tip === 'Export fields as CSV' ? exportExtractCsv() : useSuggestion(tip)"
+            >
+              {{ tip }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <form class="shrink-0 border-t border-paper-200 bg-paper-50 p-3 sm:px-5 dark:border-white/10 dark:bg-ink-950" (ngSubmit)="send()">
+        <div *ngIf="mode === 'extract'" class="mb-2 flex justify-end">
+          <button type="button" class="text-xs font-medium text-accent-700 hover:underline" (click)="exportExtractCsv()">Export CSV</button>
+        </div>
+        <label class="sr-only" for="chat-input">Ask a question</label>
+        <div class="flex items-end gap-2 rounded-md border border-paper-200 bg-white p-2 shadow-sm dark:border-white/10 dark:bg-ink-900">
+          <textarea
+            #composer
+            id="chat-input"
+            rows="1"
+            class="max-h-32 min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none"
+            [placeholder]="composerPlaceholder()"
+            [(ngModel)]="draft"
+            name="draft"
+            [disabled]="composerDisabled()"
+            (keydown)="onComposerKey($event)"
+          ></textarea>
+          <button class="btn-ink !px-3 disabled:opacity-40" type="submit" [disabled]="sending || !draft.trim() || !canAsk()" aria-label="Send">
+            <svg lucideSend [size]="16"></svg>
+          </button>
+        </div>
+        <p class="mt-1.5 text-[11px] text-ink-600">Enter to send · Shift+Enter for a new line · / to focus</p>
+      </form>
+    </section>
+
+    <aside class="hidden min-h-0 flex-col overflow-hidden border-l border-paper-200 xl:flex dark:border-white/10">
+      <div class="shrink-0 border-b border-paper-200 px-4 py-3 dark:border-white/10">
+        <p class="text-[11px] uppercase tracking-[0.14em] text-ink-600">Evidence</p>
+        <div class="mt-2" *ngIf="activeEvidence">
+          <app-support-badge [status]="activeEvidence.support_status || (isInsufficient(activeEvidence) ? 'not_found' : evidenceSources().length ? 'supported' : 'partially_supported')"></app-support-badge>
+        </div>
+      </div>
+      <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <p *ngIf="!activeEvidence" class="text-sm text-ink-600">Ask a question to see citations and source excerpts here.</p>
+        <div *ngIf="activeEvidence && !evidenceSources().length" class="text-sm text-ink-600">
+          No supporting passages for this answer.
+        </div>
+        <div *ngFor="let source of evidenceSources()" class="mb-4 border-b border-paper-200 pb-4 last:border-0 dark:border-white/10">
+          <button type="button" class="w-full text-left text-sm" (click)="openSource(source)">
+            <span class="font-medium">{{ source.document }}</span>
+            <span class="mt-0.5 block text-xs text-ink-600">Page {{ source.page }}</span>
+            <span class="citation-highlight mt-2 block text-xs leading-5 text-ink-700">“{{ source.excerpt }}”</span>
+          </button>
+          <div class="mt-2 flex gap-2">
+            <button type="button" class="text-xs font-medium text-accent-700" (click)="openSource(source)">Open source</button>
+            <button type="button" class="text-xs text-ink-600" (click)="copyCitation(source)">Copy</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <aside
+      *ngIf="viewerOpen"
+      class="fixed inset-0 z-50 flex flex-col bg-paper-50 dark:bg-ink-950 sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[min(100%,28rem)] sm:border-l sm:border-paper-200 dark:sm:border-white/10"
+    >
+      <div class="flex items-center justify-between px-3 py-2">
+        <p class="text-sm font-medium">{{ viewerPage ? 'Page ' + viewerPage : 'Source' }}</p>
+        <button type="button" class="rounded-md p-1 text-ink-600 hover:text-ink-950" (click)="viewerOpen = false" aria-label="Close viewer"><svg lucideX [size]="16"></svg></button>
+      </div>
+      <app-pdf-viewer [documentId]="viewerDocId" [page]="viewerPage" [excerpt]="viewerExcerpt"></app-pdf-viewer>
+    </aside>
+  </div>
+</div>
+
+<div *ngIf="renameOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <button class="absolute inset-0 bg-ink-950/40" type="button" (click)="renameOpen = false"></button>
+  <div class="dialog-in relative w-full max-w-sm border border-paper-200 bg-paper-50 p-5 dark:border-white/10 dark:bg-ink-950">
+    <h2 class="font-medium">Rename conversation</h2>
+    <input class="field mt-3" [(ngModel)]="renameValue" />
+    <div class="mt-4 flex justify-end gap-2">
+      <button type="button" class="btn-quiet" (click)="renameOpen = false">Cancel</button>
+      <button type="button" class="btn-ink !py-1.5" (click)="saveRename()">Save</button>
+    </div>
+  </div>
+</div>
+
+<app-confirm-dialog
+  [open]="!!pendingDeleteId"
+  title="Delete this conversation?"
+  message="Messages in this thread will be removed."
+  (confirm)="deleteConversation()"
+  (cancel)="pendingDeleteId = ''"
+></app-confirm-dialog>

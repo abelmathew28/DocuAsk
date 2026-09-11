@@ -1,0 +1,56 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: docuask-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: docuask
+      POSTGRES_PASSWORD: docuask
+      POSTGRES_DB: docuask
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docuask -d docuask"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: docuask-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://docuask:docuask@db:5432/docuask
+      LOCAL_STORAGE_PATH: /app/storage/uploads
+      FRONTEND_URL: http://localhost:8080
+      CORS_ORIGINS: http://localhost:8080,http://localhost:4200
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads_data:/app/storage/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NG_APP_API_URL: /api
+    container_name: docuask-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  uploads_data:

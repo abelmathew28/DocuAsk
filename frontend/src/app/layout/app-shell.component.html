@@ -1,0 +1,108 @@
+<div class="relative flex h-screen overflow-hidden bg-paper-50 text-ink-950 dark:bg-ink-950 dark:text-paper-50">
+  <aside
+    class="fixed inset-y-0 left-0 z-40 flex h-full w-56 -translate-x-full flex-col border-r border-paper-200 bg-paper-50 transition-transform lg:static lg:translate-x-0 dark:border-white/10 dark:bg-ink-950"
+    [class.!translate-x-0]="menuOpen"
+    aria-label="Workspace"
+  >
+    <div class="flex h-12 items-center gap-2 border-b border-paper-200 px-4 dark:border-white/10">
+      <app-logo link="/app"></app-logo>
+    </div>
+    <nav class="flex-1 space-y-0.5 overflow-y-auto px-2 py-2 text-sm" aria-label="Primary">
+      <p class="px-3 pb-1 pt-2 text-[10px] uppercase tracking-[0.14em] text-ink-600">Workspace</p>
+      <a routerLink="/app" class="side-link" [class.is-on]="isHome" (click)="menuOpen = false">Dashboard</a>
+      <a routerLink="/app/documents" class="side-link" [class.is-on]="isFiles" (click)="menuOpen = false">Documents</a>
+      <p class="px-3 pb-1 pt-3 text-[10px] uppercase tracking-[0.14em] text-ink-600">Modes</p>
+      <a routerLink="/app/ask" class="side-link" routerLinkActive="is-on" [routerLinkActiveOptions]="{ exact: false }" (click)="menuOpen = false">Ask</a>
+      <a routerLink="/app/research" class="side-link" routerLinkActive="is-on" (click)="menuOpen = false">Research</a>
+      <a routerLink="/app/compare" class="side-link" routerLinkActive="is-on" (click)="menuOpen = false">Compare</a>
+      <a routerLink="/app/extract" class="side-link" routerLinkActive="is-on" (click)="menuOpen = false">Extract</a>
+      <div class="my-2 border-t border-paper-200 dark:border-white/10"></div>
+      <a routerLink="/app/recent" class="side-link" routerLinkActive="is-on" (click)="menuOpen = false">Recent</a>
+      <a routerLink="/app/settings" class="side-link" routerLinkActive="is-on" (click)="menuOpen = false">Settings</a>
+      <a routerLink="/app/help" class="side-link" routerLinkActive="is-on" (click)="menuOpen = false">Guide</a>
+    </nav>
+  </aside>
+  <button
+    *ngIf="menuOpen"
+    type="button"
+    class="fixed inset-0 z-30 bg-ink-950/40 lg:hidden"
+    aria-label="Close navigation"
+    (click)="menuOpen = false"
+  ></button>
+
+  <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <header class="sticky top-0 z-20 shrink-0 border-b border-paper-200 bg-paper-50/95 backdrop-blur dark:border-white/10 dark:bg-ink-950/95">
+      <div class="flex h-12 items-center justify-between gap-3 px-3 sm:px-4">
+        <div class="flex min-w-0 items-center gap-2">
+          <button class="rounded-md p-1 lg:hidden" type="button" (click)="menuOpen = !menuOpen" aria-label="Open navigation">
+            <svg *ngIf="!menuOpen" lucideMenu [size]="18"></svg>
+            <svg *ngIf="menuOpen" lucideX [size]="18"></svg>
+          </button>
+          <p class="truncate text-sm text-ink-600">{{ pageLabel }}</p>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <label class="cursor-pointer px-2 py-1.5 text-sm text-ink-600 transition hover:text-accent-700 dark:hover:text-accent-400" [class.opacity-40]="uploading">
+            {{ uploading ? 'Uploading…' : 'Upload' }}
+            <input
+              class="sr-only"
+              type="file"
+              accept=".pdf,.docx,.txt,.md,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              [disabled]="uploading"
+              (change)="upload($event)"
+            />
+          </label>
+          <button type="button" class="hidden items-center gap-2 px-2 py-1.5 text-sm text-ink-600 transition hover:text-ink-950 md:inline-flex dark:hover:text-white" (click)="paletteOpen = true">
+            <svg lucideSearch [size]="15"></svg>
+            <span>Search</span>
+            <span class="text-[10px] text-ink-600">⌘K</span>
+          </button>
+          <button type="button" class="rounded-md p-2 text-ink-600 hover:text-ink-950 dark:hover:text-white" (click)="toggleTheme()" [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'">
+            <svg *ngIf="theme.theme() !== 'dark'" lucideMoon [size]="16"></svg>
+            <svg *ngIf="theme.theme() === 'dark'" lucideSun [size]="16"></svg>
+          </button>
+          <div class="relative" (click)="$event.stopPropagation()">
+            <button type="button" class="flex h-8 w-8 items-center justify-center rounded-full bg-ink-950 text-xs font-medium text-paper-50 dark:bg-paper-50 dark:text-ink-950" (click)="profileOpen = !profileOpen" [attr.aria-expanded]="profileOpen">
+              {{ (auth.currentUser?.name || 'A').charAt(0) }}
+            </button>
+            <div *ngIf="profileOpen" class="absolute right-0 mt-2 w-48 border border-paper-200 bg-white py-1 text-sm dark:border-white/10 dark:bg-ink-900">
+              <p class="px-3 py-2 text-xs text-ink-600">{{ auth.currentUser?.email }}</p>
+              <a routerLink="/app/settings" class="block px-3 py-2 hover:bg-paper-100 dark:hover:bg-white/5">Settings</a>
+              <button type="button" class="block w-full px-3 py-2 text-left hover:bg-paper-100 dark:hover:bg-white/5" (click)="logout()">Sign out</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main [class]="isChat ? 'chat-main flex min-h-0 flex-1 flex-col overflow-hidden' : 'mx-auto w-full max-w-6xl flex-1 overflow-y-auto px-4 py-6 sm:px-6'">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<div *ngIf="paletteOpen" class="fixed inset-0 z-[80] bg-ink-950/30 p-4 pt-[12vh]" (click)="paletteOpen = false">
+  <div class="mx-auto w-full max-w-lg border border-paper-200 bg-white dark:border-white/10 dark:bg-ink-900" (click)="$event.stopPropagation()">
+    <div class="flex items-center gap-2 border-b border-paper-200 px-3 py-2.5 dark:border-white/10">
+      <svg lucideSearch [size]="15"></svg>
+      <input class="w-full bg-transparent text-sm outline-none" placeholder="Jump to a file" [(ngModel)]="query" (ngModelChange)="search()" autofocus />
+    </div>
+    <div *ngIf="!results().length" class="px-3 py-5 text-sm text-ink-600">Type a file name.</div>
+    <button *ngFor="let item of results()" type="button" class="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-paper-100 dark:hover:bg-white/5" (click)="openDocument(item)">
+      <span>{{ item.name }}</span>
+      <span class="text-xs capitalize text-ink-600">{{ item.status }}</span>
+    </button>
+  </div>
+</div>
+
+<div *ngIf="shortcutsOpen" class="fixed inset-0 z-[80] flex items-center justify-center bg-ink-950/30 p-4" (click)="shortcutsOpen = false">
+  <div class="w-full max-w-sm border border-paper-200 bg-white p-5 dark:border-white/10 dark:bg-ink-900" (click)="$event.stopPropagation()">
+    <h2 class="font-display text-2xl">Keyboard</h2>
+    <dl class="mt-4 space-y-2 text-sm">
+      <div class="flex justify-between"><dt>Search files</dt><dd class="text-ink-600">⌘K</dd></div>
+      <div class="flex justify-between"><dt>Shortcuts</dt><dd class="text-ink-600">?</dd></div>
+      <div class="flex justify-between"><dt>Focus question</dt><dd class="text-ink-600">/</dd></div>
+      <div class="flex justify-between"><dt>Send</dt><dd class="text-ink-600">Enter</dd></div>
+      <div class="flex justify-between"><dt>Close</dt><dd class="text-ink-600">Esc</dd></div>
+    </dl>
+  </div>
+</div>

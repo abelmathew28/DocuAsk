@@ -1,0 +1,96 @@
+<section>
+  <header class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Workspace</h1>
+      <p class="mt-1.5 max-w-2xl text-[15px] leading-6 text-ink-600">
+        Ask your documents. Verify every answer.
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a routerLink="/app/ask" class="btn-ink !py-2">Open Ask</a>
+      <a routerLink="/app/documents" class="btn-ghost !py-2">Documents</a>
+    </div>
+  </header>
+
+  <div *ngIf="stats()" class="mb-6 grid gap-3 sm:grid-cols-3">
+    <div class="rounded-md border border-paper-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-ink-900">
+      <p class="text-[11px] uppercase tracking-[0.14em] text-ink-600">Documents</p>
+      <p class="mt-1 font-display text-2xl tracking-tight">{{ stats()!.total_documents }}</p>
+    </div>
+    <div class="rounded-md border border-paper-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-ink-900">
+      <p class="text-[11px] uppercase tracking-[0.14em] text-ink-600">Questions</p>
+      <p class="mt-1 font-display text-2xl tracking-tight">{{ stats()!.questions_asked }}</p>
+    </div>
+    <div class="rounded-md border border-paper-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-ink-900">
+      <p class="text-[11px] uppercase tracking-[0.14em] text-ink-600">Avg response</p>
+      <p class="mt-1 font-display text-2xl tracking-tight">
+        {{ stats()!.average_response_ms != null ? (stats()!.average_response_ms | number:'1.0-0') + ' ms' : '—' }}
+      </p>
+    </div>
+  </div>
+
+  <div class="rounded-md border border-dashed border-paper-200 bg-white/60 px-4 py-3 dark:border-white/10 dark:bg-ink-900/40">
+    <app-dropzone (fileSelected)="upload($event)"></app-dropzone>
+    <p *ngIf="processingCount" class="mt-2 text-sm text-ink-600">
+      <span class="processing-dot">{{ processingCount }} file{{ processingCount === 1 ? '' : 's' }} {{ processingLabel() }}</span>
+    </p>
+  </div>
+
+  <div *ngIf="loading" class="mt-5 space-y-2">
+    <div *ngFor="let _ of [1, 2, 3]" class="h-9 animate-pulse bg-paper-200 dark:bg-white/10"></div>
+  </div>
+
+  <div *ngIf="!loading && !documents().length" class="mt-6 rounded-md border border-paper-200 px-4 py-6 dark:border-white/10">
+    <p class="font-medium">Start with a document</p>
+    <p class="mt-1 text-sm text-ink-600">Upload a PDF, Word, or text file. When it is Ready, ask a question and open the cited page.</p>
+  </div>
+
+  <div *ngIf="!loading && documents().length" class="mt-6">
+    <div class="mb-2 flex items-baseline justify-between">
+      <h2 class="text-sm font-medium">Library</h2>
+      <a routerLink="/app/documents" class="text-sm text-ink-600 hover:text-ink-950">View all</a>
+    </div>
+    <div class="hidden grid-cols-[minmax(0,1fr)_5rem_6rem_5rem] gap-3 border-b border-paper-200 py-2 text-[11px] uppercase tracking-[0.14em] text-ink-600 sm:grid dark:border-white/10">
+      <span>File</span>
+      <span>Pages</span>
+      <span>Status</span>
+      <span></span>
+    </div>
+    <article *ngFor="let doc of documents().slice(0, 8)" class="grid grid-cols-1 items-center gap-1.5 border-b border-paper-200 py-3 sm:grid-cols-[minmax(0,1fr)_5rem_6rem_5rem] sm:gap-3 dark:border-white/10">
+      <div class="min-w-0">
+        <a [routerLink]="['/app/documents', doc.id]" class="truncate font-medium hover:underline">{{ doc.name }}</a>
+        <p class="mt-0.5 text-xs text-ink-600">{{ relativeTime(doc.created_at) }}</p>
+        <p *ngIf="doc.status === 'failed'" class="error-note">{{ explainError(doc.error_message)?.title }} Tap Retry to index it.</p>
+      </div>
+      <p class="text-sm text-ink-600">{{ doc.page_count || '—' }}</p>
+      <app-status-badge [status]="doc.status" [stage]="doc.processing_stage || null"></app-status-badge>
+      <div class="flex justify-start sm:justify-end">
+        <button *ngIf="doc.status === 'ready'" class="text-sm font-medium" type="button" (click)="openChat(doc)">Ask</button>
+        <button *ngIf="doc.status === 'failed'" class="text-sm font-medium" type="button" (click)="retry(doc)">Retry</button>
+        <span *ngIf="doc.status === 'processing' || doc.status === 'uploading'" class="text-sm text-ink-600">Wait</span>
+      </div>
+    </article>
+  </div>
+
+  <div class="mt-8 grid gap-8 lg:grid-cols-2">
+    <div *ngIf="readyQuestions().length">
+      <p class="text-sm font-medium">Try asking · {{ readyDoc?.name }}</p>
+      <div class="mt-2 flex flex-col items-start gap-1.5">
+        <button *ngFor="let question of readyQuestions()" type="button" class="text-left text-sm underline decoration-paper-200 underline-offset-4 hover:decoration-ink-950 dark:decoration-white/20" (click)="askReady(question)">
+          {{ question }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="conversations().length">
+      <div class="mb-2 flex items-baseline justify-between">
+        <h2 class="text-sm font-medium">Recent questions</h2>
+        <a routerLink="/app/recent" class="text-sm text-ink-600 hover:text-ink-950">All</a>
+      </div>
+      <a *ngFor="let item of conversations()" [routerLink]="['/app/ask', item.id]" class="flex items-baseline justify-between gap-4 border-b border-paper-200 py-2.5 text-sm dark:border-white/10">
+        <span class="min-w-0 truncate">{{ item.title }}</span>
+        <span class="shrink-0 text-xs text-ink-600">{{ relativeTime(item.updated_at) }}</span>
+      </a>
+    </div>
+  </div>
+</section>

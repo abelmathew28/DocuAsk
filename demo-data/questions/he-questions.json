@@ -1,0 +1,33 @@
+[
+  {
+    "id": "withdraw-deadline",
+    "question": "What is the last day to withdraw from a Fall 2026 course?",
+    "document": "fall-2026-academic-calendar.txt",
+    "expected_excerpt": "Last day to withdraw from a Fall 2026 course: Friday, November 6, 2026.",
+    "expected_page": 2,
+    "support_status": "supported"
+  },
+  {
+    "id": "refund-deadline",
+    "question": "What is the tuition refund deadline for Fall 2026?",
+    "document": "fall-2026-academic-calendar.txt",
+    "expected_excerpt": "100% refund through Friday, September 4, 2026",
+    "expected_page": 3,
+    "support_status": "supported"
+  },
+  {
+    "id": "plagiarism-first",
+    "question": "What happens if a student is found responsible for plagiarism?",
+    "document": "student-handbook-excerpt.txt",
+    "expected_excerpt": "First offense: failing grade on the assignment and a written warning",
+    "expected_page": 1,
+    "support_status": "supported"
+  },
+  {
+    "id": "absent-topic",
+    "question": "What is the parking fine for overnight guests?",
+    "document": "fall-2026-academic-calendar.txt",
+    "expected_answer_contains": "could not find enough information",
+    "support_status": "not_found"
+  }
+]
