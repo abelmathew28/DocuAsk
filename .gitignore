@@ -50,3 +50,4 @@ logs/
 # Alembic local
 *.db
 *.sqlite3
+storage/uploads/
